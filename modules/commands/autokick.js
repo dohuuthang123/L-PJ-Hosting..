@@ -11,7 +11,7 @@ const e = b(__dirname, "data", "autokick.json");
 module.exports.config = {
   name: "autokick",
   version: "1.0.0",
-  credits: "NTKhang (fix by DEV NDK)",
+  credits: "TungVu (fix by DEV NDK)",
   hasPermssion: 1,
   description: "Cảnh báo thành viên vi phạm từ ngữ",
   usages: "autokick on/off add/del list",

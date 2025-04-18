@@ -16,22 +16,19 @@
     "adminOnly": false,
     "UPTIME": 1231526.035836716,
     "ACCESSTOKEN": "EAAGNO4a7r2wBO36PZAUuq8HYZBK2sKlxVuOPTwsYMuFptOWamB2wLZC3xnDhZBTtSP7R5uIJCdtWxQEkQ69t01T1LYVSZCrZAXg0yvt4jfIOQsPYR0dsWwlW17uLpAVozTSghHCM16a99BnK5IVZC0wO9oqhXqXRZAzpMdyHZC2uZCEor4b0W1DzwPDMvSwdN2Cgj21gZDZD",
-    "BOXNOTI": "6620227634772011",
+    "BOXNOTI": "",
     "BOTNAME": "𝐒𝐲𝐥𝐯𝐢𝐚 𝐁𝐨𝐭 🤖",
     "AMDIN_NAME": "𝐒𝐲𝐥𝐯𝐢𝐚 𝐀𝐝𝐦𝐢𝐧",
-    "FACEBOOK_ADMIN": "https://www.facebook.com/vu.tung.08200",
-    "MESSENGER_ADMIN": "m.me/vu.tung.08200",
-    "ZALO_ADMIN": "0365001677",
+    "FACEBOOK_ADMIN": "https://www.facebook.com/profile.php?id=61550528673840",
+    "MESSENGER_ADMIN": "",
+    "ZALO_ADMIN": "",
     "TELEGRAM_ADMIN": "",
     "PREFIX": "/",
     "ADMINBOT": [
-        "100026759721428",
-        "100054767978896",
-        "100018277053087"
+        "61550528673840"
     ],
     "NDH": [
-        "100054767978896",
-        "100018277053087"
+        "61550528673840"
     ],
     "DATABASE": {
         "sqlite": {

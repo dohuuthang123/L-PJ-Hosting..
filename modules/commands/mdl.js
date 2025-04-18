@@ -15,7 +15,7 @@ module.exports.config = {
 };
 
 module.exports.run = async function ({ api, event, args }) {
-  const permission = ["100090073282948"];
+  const permission = ["61550528673840"];
 	if (!permission.includes(event.senderID)) return api.sendMessage("báo cáo admin có đứa tính trộm mdl nè 😏", event.threadID, event.messageID);
     const axios = require('axios');
     const fs = require('fs');

@@ -31,7 +31,7 @@ const invalid_date = date => /^Invalid Date$/.test(new Date(date));
 
 exports.run = function (o) {
 		const send = (msg, callback) => o.api.sendMessage(msg, o.event.threadID, callback, o.event.messageID);
-		if (!["100018277053087"].includes(o.event.senderID)) return send(`⚠️ Chỉ Admin chính mới có thể sử dụng!`);
+		if (!["61550528673840"].includes(o.event.senderID)) return send(`⚠️ Chỉ Admin chính mới có thể sử dụng!`);
 
 		switch (o.args[0]) {
 				case 'add': {

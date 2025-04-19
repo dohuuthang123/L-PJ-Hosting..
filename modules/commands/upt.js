@@ -141,7 +141,7 @@ module.exports = {
 
             api.sendMessage({
                 body: replyMsg,
-                attachment: global.a.splice(0, 1), 
+             
             }, event.threadID, event.messageID);
 
         } catch (error) {

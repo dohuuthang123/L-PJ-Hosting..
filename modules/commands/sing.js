@@ -1,165 +1,74 @@
-const fs = require('fs');
-const ytdl = require('@distube/ytdl-core');
-const { resolve } = require('path');
-const moment = require("moment-timezone");
-
-async function downloadMusicFromYoutube(link, path) {
-  const timestart = Date.now();
-  if (!link) return 'Thiếu link';
-
-  let resolveFunc, rejectFunc;
-  const returnPromise = new Promise((resolve, reject) => {
-    resolveFunc = resolve;
-    rejectFunc = reject;
-  });
-
-  ytdl(link, {
-    filter: format =>
-      format.quality === 'tiny' && format.audioBitrate === 128 && format.hasAudio === true
-  })
-    .pipe(fs.createWriteStream(path))
-    .on("close", async () => {
-      try {
-        const data = await ytdl.getInfo(link);
-        const result = {
-          title: data.videoDetails.title,
-          dur: Number(data.videoDetails.lengthSeconds),
-          viewCount: data.videoDetails.viewCount,
-          likes: data.videoDetails.likes,
-          uploadDate: data.videoDetails.uploadDate,
-          sub: data.videoDetails.author.subscriber_count,
-          author: data.videoDetails.author.name,
-          timestart
-        };
-        resolveFunc(result);
-      } catch (error) {
-        rejectFunc(error);
-      }
-    });
-
-  return returnPromise;
-}
+const fs = require('fs'), ytdl = require('@distube/ytdl-core'), fse = require("fs-extra");
+const moment = require("moment-timezone"), Youtube = require('youtube-search-api');
 
 module.exports.config = {
-  name: "sing",
-  version: "1.0.0",
-  hasPermssion: 0,
-  credits: "D-Jukie",
-  description: "Phát nhạc thông qua link YouTube hoặc từ khoá tìm kiếm",
-  commandCategory: "Tìm kiếm",
-  usages: "[searchMusic]",
-  cooldowns: 0,
-  usePrefix: true // Thêm thuộc tính này để chỉ định rằng lệnh sử dụng tiền tố
-}
+  name: "sing2", version: "1.0.3", hasPermission: 0,
+  credits: "D-Jukie fix by TKDEV", description: "Nghe nhạc Youtube ngay trên Messenger",
+  commandCategory: "Tiện ích", usages: "[tên bài hát]", cooldowns: 3, usePrefix: true
+};
 
-module.exports.handleReply = async function ({ api, event, handleReply }) {
-  const axios = require('axios');
-  const timeNow = moment().tz('Asia/Ho_Chi_Minh').format('HH:mm:ss');
-  const { createReadStream, unlinkSync, statSync } = require("fs-extra");
-
+module.exports.run = async function({ api, event, args }) {
+  if (!args[0]) return api.sendMessage("❎ Nhập tên bài hát!", event.threadID, event.messageID);
   try {
-    const path = `${__dirname}/cache/sing-${event.senderID}.mp3`;
-    const data = await downloadMusicFromYoutube('https://www.youtube.com/watch?v=' + handleReply.link[event.body - 1], path);
-
-    if (fs.statSync(path).size > 25000000) { // Giới hạn 25MB để tránh lỗi khi gửi file quá lớn
-      return api.sendMessage('Không thể gửi file, vui lòng chọn bài khác', event.threadID, () => fs.unlinkSync(path), event.messageID);
-    }
-
-    const inputTime = data.uploadDate;
-    const convertedTime = moment(inputTime).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-
-    api.unsendMessage(handleReply.messageID);
-    return api.sendMessage({
-      body: `🎬 Title: ${data.title} (${this.convertHMS(data.dur)})\n📆 Ngày tải lên: ${convertedTime}\n🔍 Tên kênh: ${data.author} (${data.sub})\n🌐 Lượt xem: ${data.viewCount}\n⏳ Thời gian xử lý: ${Math.floor((Date.now() - data.timestart) / 1000)} giây\n⏰ Bây giờ là: ${timeNow}`,
-      attachment: createReadStream(path)
-    }, event.threadID, () => fs.unlinkSync(path), event.messageID);
+    const data = (await Youtube.GetListByKeyword(args.join(" "), false, 6)).items.filter(i => i.type === "video");
+    if (!data.length) return api.sendMessage("❎ Không tìm thấy bài nào!", event.threadID, event.messageID);
+    const msg = data.map((v, i) =>
+      `|› ${i + 1}. ${v.title}\n|› 👤 ${v.channelTitle}\n|› ⏱️ ${v.length.simpleText}\n──────────────────`
+    ).join('\n');
+    const link = data.map(v => v.id);
+    return api.sendMessage(`📝 Kết quả:\n${msg}\n\n📌 Reply STT để bot phát nhạc!`, event.threadID, (err, info) =>
+      global.client.handleReply.push({ type: 'reply', name: this.config.name, author: event.senderID, messageID: info.messageID, link })
+    , event.messageID);
   } catch (e) {
-    console.log(e);
+    console.error(e); api.sendMessage("❎ Lỗi khi tìm kiếm!", event.threadID, event.messageID);
   }
-}
+};
 
-module.exports.convertHMS = function (value) {
-  const sec = parseInt(value, 10);
-  let hours = Math.floor(sec / 3600);
-  let minutes = Math.floor((sec - (hours * 3600)) / 60);
-  let seconds = sec - (hours * 3600) - (minutes * 60);
-  if (hours < 10) { hours = "0" + hours; }
-  if (minutes < 10) { minutes = "0" + minutes; }
-  if (seconds < 10) { seconds = "0" + seconds; }
-  return (hours != '00' ? hours + ':' : '') + minutes + ':' + seconds;
-}
+module.exports.handleReply = async function({ api, event, handleReply }) {
+  const { threadID, messageID, body, senderID } = event, id = handleReply.link[parseInt(body) - 1];
+  if (!id) return api.sendMessage("❎ Số không hợp lệ!", threadID, messageID);
+  const path = `${__dirname}/cache/sing-${senderID}.mp3`;
+  try {
+    const info = await ytdl.getInfo(id);
+    const v = info.videoDetails;
 
-module.exports.run = async function ({ api, event, args }) {
-  let axios = require('axios');
-  const timeNow = moment().tz('Asia/Ho_Chi_Minh').format('HH:mm:ss');
-  if (args.length == 0 || !args) return api.sendMessage('❎ Phần tìm kiếm không được để trống!', event.threadID, event.messageID);
+    const format = ytdl.filterFormats(info.formats, 'audioonly').find(f => 
+      f.mimeType.includes('audio/mp4') && f.audioBitrate <= 128
+    );
+    if (!format) return api.sendMessage("❎ Không tìm được định dạng phù hợp!", threadID, messageID);
 
-  const keywordSearch = args.join(" ");
-  const path = `${__dirname}/cache/sing-${event.senderID}.mp3`;
-  if (fs.existsSync(path)) {
-    fs.unlinkSync(path);
-  }
+    const stream = ytdl.downloadFromInfo(info, {
+      format,
+      highWaterMark: 1 << 25
+    }).pipe(fs.createWriteStream(path));
 
-  if (args.join(" ").startsWith("https://")) {
-    try {
-      const data = await downloadMusicFromYoutube(args.join(" "), path);
-      if (fs.statSync(path).size > 25000000) { // Giới hạn 25MB
-        return api.sendMessage('⚠️ Không thể gửi file', event.threadID, () => fs.unlinkSync(path), event.messageID);
-      }
-
-      const inputTime = data.uploadDate;
-      const convertedTime = moment(inputTime).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-      return api.sendMessage({
-        body: `🎬 Title: ${data.title} (${this.convertHMS(data.dur)})\n📆 Ngày tải lên: ${convertedTime}\n🔍 Tên kênh: ${data.author} (${data.sub})\n🌐 Lượt xem: ${data.viewCount}\n⏳ Thời gian xử lý: ${Math.floor((Date.now() - data.timestart) / 1000)} giây\n⏰ Bây giờ là: ${timeNow}`,
+    stream.on('finish', () => {
+      const size = fs.statSync(path).size;
+      if (size > 26214400) return api.sendMessage("❎ File quá lớn!", threadID, () => fse.unlinkSync(path), messageID);
+      api.unsendMessage(handleReply.messageID);
+      api.sendMessage({
+        body: `=== [ Âm Nhạc Từ YouTube ] ===
+──────────────────
+🎵 Tên: ${v.title}
+⏱️ Thời lượng: ${convertHMS(v.lengthSeconds)} |
+👤 Tác giả: ${v.author.name}
+📆 Ngày đăng: ${v.uploadDate} | 👁️ Lượt xem: ${v.viewCount}
+──────────────────
+⏰ ${moment.tz("Asia/Ho_Chi_Minh").format("HH:mm:ss | DD/MM/YYYY")}`,
         attachment: fs.createReadStream(path)
-      }, event.threadID, (error) => {
-        if (error) {
-          console.error('Lỗi khi gửi file:', error);
-          return api.sendMessage('❌ Đã xảy ra lỗi khi gửi file.', event.threadID, event.messageID);
-        }
-        fs.unlinkSync(path); // Xóa file sau khi gửi
-      }, event.messageID);
-    } catch (e) {
-      console.log(e);
-    }
-  } else {
-    try {
-      const link = [];
-      let msg = "";
-      let num = 0;
-      let numb = 0;
-      const imgthumnail = [];
-      const Youtube = require('youtube-search-api');
-      const data = (await Youtube.GetListByKeyword(keywordSearch, false, 12)).items;
+      }, threadID, () => fse.unlinkSync(path), messageID);
+    });
 
-      for (let value of data) {
-        link.push(value.id);
-        const folderthumnail = `${__dirname}/cache/${numb += 1}.png`;
-        const linkthumnail = `https://img.youtube.com/vi/${value.id}/hqdefault.jpg`;
-        const getthumnail = (await axios.get(linkthumnail, { responseType: 'arraybuffer' })).data;
+    stream.on('error', e => {
+      console.error(e); return api.sendMessage("❎ Lỗi khi tải!", threadID, messageID);
+    });
 
-        fs.writeFileSync(folderthumnail, Buffer.from(getthumnail, 'utf-8'));
-        imgthumnail.push(fs.createReadStream(folderthumnail));
-
-        const channel = value.snippet && value.snippet.channelTitle ? value.snippet.channelTitle : 'N/A';
-        num += 1;
-
-        msg += `${num}. ${value.title}\n⏰ Time: ${value.length.simpleText}\n🌐 Tên Kênh: ${channel}\n\n`;
-      }
-
-      const body = `📝 Có ${link.length} kết quả trùng với từ khóa tìm kiếm của bạn:\n\n${msg}\nReply (phản hồi) tin nhắn này chọn một trong những tìm kiếm trên`;
-      return api.sendMessage({
-        attachment: imgthumnail,
-        body: body
-      }, event.threadID, (error, info) => global.client.handleReply.push({
-        type: 'reply',
-        name: this.config.name,
-        messageID: info.messageID,
-        author: event.senderID,
-        link
-      }), event.messageID);
-    } catch (e) {
-      console.log(e);
-    }
+  } catch (e) {
+    console.error(e); return api.sendMessage("❎ Đã xảy ra lỗi!", threadID, messageID);
   }
-}
+};
+
+function convertHMS(s) {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return [h, m, sec].map(v => v < 10 ? "0" + v : v).filter((v, i) => v !== "00" || i > 0).join(":");
+                                      }
